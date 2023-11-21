@@ -1,12 +1,13 @@
 module RexControl (
-    Clk, Reset, Start, Restart, Jump, Duck, Pause
+    Clk, Reset, Start, Restart, Jump, Duck, Pause, q_Start, q_Stop, q_Jump, q_Duck, q_Run, q_Pause, x_pos, y_pos, point,  hit_obs, speed
 );
 
 input Clk, Reset, Start, Restart, Jump, Duck, Pause;
 
 output q_Start, q_Stop, q_Jump, q_Duck, q_Run, q_Pause;
 output reg [7:0] x_pos, y_pos, point, speed;
-output reg hit_obs, g_flag, j_flag, d_flag;
+input reg hit_obs;
+reg g_flag, j_flag, d_flag;
 //Needs more output?
 
 reg [5:0] state;
@@ -34,6 +35,7 @@ begin CLOCK_COUNTER
             clk_cnt_stage_1 <= 0;
             clk_cnt_stage_2 <= clk_cnt_stage_2 + 1;
         end
+end
 
 
 
@@ -138,6 +140,7 @@ begin STATE_MACHINE_BLOCK
                             else
                             d_flag <= 1;
                         end
+                end
                 
                 PAUSE:
                 begin
@@ -152,6 +155,9 @@ begin STATE_MACHINE_BLOCK
                     if (Restart)
                         state <= START;
                 end
+            endcase
+        
+
 
                         
                     
