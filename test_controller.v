@@ -13,11 +13,12 @@ module test_rex_controller(
 	
 	//these two values dictate the center of the block, incrementing and decrementing them leads the block to move in certain directions
 	reg [9:0] xpos, ypos, relative_x, relative_y;
+	reg [9:0] xpos_obs, ypos_obs;
 	reg [22:0] dino [46:0];
 	reg [6:0] jumping [26:0];
 	reg [19:0] millisecond;
     reg [8:0] second;
-    reg bool;
+    reg bool, dino_pre, obs_pre, collison;
 
 	initial begin
         dino[0] = 23'b00000000000000000000000;
@@ -132,12 +133,18 @@ module test_rex_controller(
            millisecond <= 0;
            second <= 0;
            bool <= 0;
+           
+           xpos_obs <= 800;
+           
         
         
     end
 
 	
 	parameter RED   = 12'b1111_0000_0000;
+	parameter obstacle_width = 10;  // Width of the obstacle
+    parameter obstacle_height = 20; // Height of the obstacle
+    parameter ground_level = 400;   // Y-coordinate of the ground level
 	
 	/*when outputting the rgb value in an always block like this, make sure to include the if(~bright) statement, as this ensures the monitor 
 	will output some data to every pixel and not just the images you are trying to display*/
@@ -147,21 +154,38 @@ module test_rex_controller(
 		 else 
 		 begin
         // Calculate relative position in the bitmap
-        relative_x = hCount - xpos + 11; // Adjusted for sprite width (centering)
+       relative_x = hCount - xpos + 11; // Adjusted for sprite width (centering)
        relative_y = vCount - ypos;
+       
         
 
         // Check if within the bounds of the bitmap
         if (relative_x >= 0 && relative_x < 23 && relative_y >= 0 && relative_y < 47) begin
             // Check if the corresponding bit in the bitmap is set
             if (dino[relative_y][22 - relative_x])
+            begin
                 rgb = RED; // Set color to red if the bit is set
+                dino_pre <= 1;
+                end
             else
                 rgb = background; // Else, use the background color
-        end
-        else
+                dino_pre <= 0;
+                
+        end else
+        if (hCount >= xpos_obs && hCount < xpos_obs + obstacle_width &&
+            vCount >= ground_level && vCount < ground_level + obstacle_height) begin
+            rgb = 12'b0011_1110_0111; // Red color for the obstacle
+            obs_pre <= 1;
+        end else begin
             rgb = background; // Outside the bitmap, use the background color
-	end
+            obs_pre <= 0;
+            end
+            if (obs_pre & dino_pre)
+            begin
+                collison <= 1;
+             end
+                
+	 end
 end
 		//the +-5 for the positions give the dimension of the block (i.e. it will be 10x10 pixels
 	
@@ -175,8 +199,9 @@ end
 			millisecond <= 0;
             second <= 0;
             bool <= 0;
+            collison <= 0;
 		end
-		else if (clk) begin
+		else if ((clk)&&(collison == 0)) begin
 		  if ((bool == 0) && (up)) begin
 		      bool <= 1;
 		      end
@@ -190,8 +215,15 @@ end
 	                   bool <= 0;
 	               end
 	          end
-	          ypos = 400-jumping[second];
+	          ypos = 400-jumping[second]-jumping[second];
 	     end
+	     
+	     if ((xpos_obs > 0)&& (collison == 0)) begin
+                xpos_obs <= xpos_obs - 1; // Move left
+            end
+            else begin
+                xpos_obs <= 800; // Reset to the right side
+            end
 	    
 	    
 		
