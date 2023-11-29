@@ -7,7 +7,8 @@ module test_rex_controller(
 	input up, input down, input left, input right,
 	input [9:0] hCount, vCount,
 	output reg [11:0] rgb,
-	output reg [11:0] background
+	output reg [11:0] background,
+	output reg[8:0] speed
    );
 	wire block_fill;
 	
@@ -17,8 +18,9 @@ module test_rex_controller(
 	reg [22:0] dino [46:0];
 	reg [6:0] jumping [26:0];
 	reg [19:0] millisecond;
-    reg [8:0] second;
-    reg bool, dino_pre, obs_pre, collison;
+    reg [8:0] second, speed;
+    reg bool;
+
 
 	initial begin
         dino[0] = 23'b00000000000000000000000;
@@ -134,7 +136,10 @@ module test_rex_controller(
            second <= 0;
            bool <= 0;
            
-           xpos_obs <= 800;
+            xpos_obs <= 800;
+            xpos<=200;
+		    ypos<=400;
+		    speed <= 1;
            
         
         
@@ -142,9 +147,16 @@ module test_rex_controller(
 
 	
 	parameter RED   = 12'b1111_0000_0000;
-	parameter obstacle_width = 10;  // Width of the obstacle
-    parameter obstacle_height = 20; // Height of the obstacle
+	parameter obstacle_width = 40;  // Width of the obstacle
+    parameter obstacle_height = 100; // Height of the obstacle
     parameter ground_level = 400;   // Y-coordinate of the ground level
+    wire collision;
+    
+    assign collision =  (xpos >= xpos_obs - 23 && xpos < xpos_obs )
+    &&
+    (ypos > 350)
+    &&
+    (~rst);
 	
 	/*when outputting the rgb value in an always block like this, make sure to include the if(~bright) statement, as this ensures the monitor 
 	will output some data to every pixel and not just the images you are trying to display*/
@@ -154,7 +166,7 @@ module test_rex_controller(
 		 else 
 		 begin
         // Calculate relative position in the bitmap
-       relative_x = hCount - xpos + 11; // Adjusted for sprite width (centering)
+       relative_x = hCount - xpos; // Adjusted for sprite width (centering)
        relative_y = vCount - ypos;
        
         
@@ -165,25 +177,21 @@ module test_rex_controller(
             if (dino[relative_y][22 - relative_x])
             begin
                 rgb = RED; // Set color to red if the bit is set
-                dino_pre <= 1;
                 end
             else
                 rgb = background; // Else, use the background color
-                dino_pre <= 0;
                 
         end else
+        if (vCount > 450) begin
+            rgb = 12'b0000_0011_0011;
+        end
+        else
         if (hCount >= xpos_obs && hCount < xpos_obs + obstacle_width &&
-            vCount >= ground_level && vCount < ground_level + obstacle_height) begin
+            vCount > ground_level && vCount < ground_level + obstacle_height) begin
             rgb = 12'b0011_1110_0111; // Red color for the obstacle
-            obs_pre <= 1;
         end else begin
             rgb = background; // Outside the bitmap, use the background color
-            obs_pre <= 0;
             end
-            if (obs_pre & dino_pre)
-            begin
-                collison <= 1;
-             end
                 
 	 end
 end
@@ -194,14 +202,11 @@ end
 		if(rst)
 		begin 
 			//rough values for center of screen
-			xpos<=200;
-			ypos<=400;
 			millisecond <= 0;
             second <= 0;
             bool <= 0;
-            collison <= 0;
 		end
-		else if ((clk)&&(collison == 0)) begin
+		else if ((clk)&&(collision == 0)) begin
 		  if ((bool == 0) && (up)) begin
 		      bool <= 1;
 		      end
@@ -218,11 +223,12 @@ end
 	          ypos = 400-jumping[second]-jumping[second];
 	     end
 	     
-	     if ((xpos_obs > 0)&& (collison == 0)) begin
-                xpos_obs <= xpos_obs - 1; // Move left
+	     if ((xpos_obs > 0)&& (collision == 0)) begin
+                xpos_obs <= xpos_obs - speed; // Move left
             end
             else begin
                 xpos_obs <= 800; // Reset to the right side
+                speed <= speed + 1;
             end
 	    
 	    
@@ -278,15 +284,18 @@ end
 	always@(posedge clk, posedge rst) begin
 		if(rst)
 			background <= 12'b1111_1111_1111;
-		else 
-			if(right)
-				background <= 12'b1111_1111_0000;
-			else if(left)
-				background <= 12'b0000_1111_1111;
-			else if(down)
-				background <= 12'b0000_1111_0000;
-			else if(up)
-				background <= 12'b0000_0000_1111;
+			
+//			if(right)
+//				background <= 12'b1111_1111_0000;
+//			else if(left)
+//				background <= 12'b0000_1111_1111;
+//			else if(down)
+//				background <= 12'b0000_1111_0000;
+//			else if(up)
+//				background <= 12'b0000_0000_1111;
+			else if(collision)
+			     background <= 12'b0000_0000_0000;
+
 	end
 
 	
